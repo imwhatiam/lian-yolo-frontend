@@ -60,6 +60,7 @@ const formatStockData = (data) => {
             {industry}
             <br />
             {stockCount}，{avgChange}%，
+            <br />
             {avgMoney}亿元
           </td>
           <td className="px-4 py-2">{stockElements}</td>
