@@ -4,89 +4,258 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
-const formatStockData1 = (data) => {
-  return Object.entries(data)
-    .map(([date, stocks]) => {
-      // 将股票数组转换为格式化字符串
-      const stockString = stocks
-        .map(stock =>
-          `${stock[0]}（${(stock[1] / 1e8).toFixed(2)}亿元，${stock[2].toFixed(2)}%）`
-        )
-        .join('，');  // 使用中文逗号分隔
+// Import chart components from chart.js and react-chartjs-2
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 
-      return {
-        date: dayjs(date).format('YYYY-MM-DD'),
-        stocks: stockString
-      }
-    })
-    .sort((a, b) => dayjs(b.date) - dayjs(a.date))
-}
+// Register necessary ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
+
+// Format stock data into a structured format for rendering
 const formatStockData = (data) => {
-  return Object.entries(data)
-    .map(([date, stocks]) => {
-      // 将股票数组转换为 JSX 元素数组
-      const stockElements = stocks.map((stock, index) => (
-        <span key={stock[0]}>
-          {stock[0]}（{(stock[1] / 1e8).toFixed(2)}亿元，
-          <span className="text-red-500">{stock[2].toFixed(2)}%</span>）
-          {index !== stocks.length - 1 && '，'}
-        </span>
-      ));
 
-      return {
-        date: dayjs(date).format('YYYY-MM-DD'),
-        stocks: stockElements
-      }
+  // Convert the data object to an array of [date, industries] entries
+  const dateEntries = Object.entries(data)
+
+  const formattedData = dateEntries.map(([date, industries]) => {
+    // Convert industries object to an array and sort industries by stock count descending
+    const industryEntries = Object.entries(industries)
+    const sortedIndustries = industryEntries.sort((a, b) => {
+      const aStockCount = a[1].length
+      const bStockCount = b[1].length
+      return bStockCount - aStockCount
     })
-    .sort((a, b) => dayjs(b.date) - dayjs(a.date))
+
+    // Take top 5 industries
+    const topIndustries = sortedIndustries.slice(0, 5)
+
+    // Process each industry
+    const industryElements = topIndustries.map(([industry, stocks]) => {
+      // Process each stock and create a span element
+      const stockElements = stocks.map((stock, index) => {
+        const [stockName, changePct, money] = stock
+
+        return (
+          <span key={stockName} className="inline-block w-100">
+            {stockName}（
+            <span className="text-red-500">{changePct.toFixed(2)}%</span>，
+            {(money / 1e8).toFixed(2)}亿元）
+            {index !== stocks.length - 1 && '，'}
+          </span>
+        )
+      })
+
+      // Calculate aggregated industry statistics
+      const stockCount = stocks.length
+      const totalChange = stocks.reduce((sum, item) => sum + item[1], 0)
+      const avgChange = (totalChange / stockCount).toFixed(2)
+
+      const totalMoney = stocks.reduce((sum, item) => sum + item[2], 0)
+      const avgMoney = (totalMoney / 1e8).toFixed(2)
+
+      return (
+        <tr key={industry} className="border-t hover:bg-gray-50">
+          <td className="px-4 py-2 whitespace-nowrap">
+            {industry}
+            <br />
+            {stockCount}，{avgChange}%，
+            {avgMoney}亿元
+          </td>
+          <td className="px-4 py-2">{stockElements}</td>
+        </tr>
+      )
+    })
+
+    return {
+      date: dayjs(date).format('YYYY-MM-DD'),
+      industries: industryElements,
+    }
+  })
+
+  // Sort formatted data by date descending
+  return formattedData.sort((a, b) => dayjs(b.date) - dayjs(a.date))
 }
 
 export default function Home() {
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get('http://127.0.0.1:8000/stock/api/big-rise-volume/')
-        const formattedData = formatStockData(res.data.data)
-        setData(formattedData)
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+  // Stock table related states
+  const [rise, setRise] = useState(8)
+  const [bigRiseVolumeStockData, setBigRiseVolumeStockData] = useState([])
+  const [bigRiseVolumeStockLoading, setBigRiseVolumeStockLoading] = useState(true)
+  const [bigRiseVolumeStockError, setBigRiseVolumeStockError] = useState(null)
+
+  // K-line chart related states for 万得全A
+  const [windInfoData, setWindInfoData] = useState([])
+  const [windInfoLoading, setWindInfoLoading] = useState(true)
+  const [windInfoError, setWindInfoError] = useState(null)
+
+  const fetchBigRiseVolumeStockData = async (riseValue) => {
+    try {
+      const apiUrl = `https://lian-yolo.com/stock/api/big-rise-volume/?rise=${riseValue}`
+      const res = await axios.get(apiUrl)
+      const data = formatStockData(res.data.data)
+      setBigRiseVolumeStockData(data)
+    } catch (err) {
+      setBigRiseVolumeStockError(err.message)
+    } finally {
+      setBigRiseVolumeStockLoading(false)
     }
-    fetchData()
+  }
+
+  const fetchWindInfoData = async () => {
+    try {
+      const apiUrl = `http://127.0.0.1:8000/stock/api/wind-info/`
+      const res = await axios.get(apiUrl)
+      const data = res.data.Result
+      setWindInfoData(data)
+    } catch (err) {
+      setWindInfoError(err.message)
+    } finally {
+      setWindInfoLoading(false)
+    }
+  }
+
+  // -------------------- Handle Rise Threshold Change --------------------
+  const handleRiseChange = (event) => {
+    const selectedValue = parseInt(event.target.value, 10)
+    setBigRiseVolumeStockLoading(true)
+    setRise(selectedValue)
+  }
+
+  // -------------------- useEffect Hooks --------------------
+  // Fetch stock data when component mounts or when 'rise' changes
+  useEffect(() => {
+    fetchBigRiseVolumeStockData(rise)
+  }, [rise])
+
+  // Fetch K-line data when component mounts
+  useEffect(() => {
+    fetchWindInfoData()
   }, [])
 
-  if (loading) return <div className="p-4 text-gray-600">加载中...</div>
-  if (error) return <div className="p-4 text-red-500">错误：{error}</div>
+  // -------------------- Prepare Chart Data --------------------
+  // Prepare chart labels (dates) and dataset (close prices)
+  const chartLabels = windInfoData.map((item) =>
+    dayjs(item.tradeDate).format('YYYY-MM-DD')
+  )
+  const chartClosePrices = windInfoData.map((item) => item.close)
 
+  const chartData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: '万得全A',
+        data: chartClosePrices,
+        borderColor: 'rgba(75, 192, 192, 1)', // Line color
+        fill: false,
+      },
+    ],
+  }
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: '万得全A指数走势',
+      },
+    },
+  }
+
+  // -------------------- Render --------------------
+  // If there's an error in fetching stock data, display the error message
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">股票异动数据(成交超8亿，涨幅超8%)</h1>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left">日期</th>
-              <th className="px-4 py-2 text-left">股票信息</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map(({ date, stocks }) => (
-              <tr key={date} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-2 whitespace-nowrap">{date}</td>
-                <td className="px-4 py-2">
-                  {stocks}  {/* 直接显示格式化后的字符串 */}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <>
+      {windInfoLoading ? (
+        <div className="p-4 text-gray-600">加载中...</div>
+      ) : windInfoError ? (
+        <div className="p-4 text-red-500">图表加载错误：{windInfoError}</div>
+      ) : (
+        <>
+          {/* Chart Section placed above the main container */}
+          <div className="p-6 max-w-8xl mx-auto">
+            <div className="bg-white p-4 rounded-lg border mb-6">
+              {/* Render chart using react-chartjs-2 */}
+              <Line data={chartData} options={chartOptions} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Main Container for Stock Table */}
+      <div className="p-6 max-w-8xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">
+          股票异动（涨超
+          <select
+            value={rise}
+            onChange={handleRiseChange}
+            className="w-8 inline-block ml-1"
+          >
+            {[...Array(10).keys()].map((num) => {
+              const optionValue = num + 6
+              return (
+                <option key={optionValue} value={optionValue}>
+                  {optionValue}
+                </option>
+              )
+            })}
+          </select>
+          %）数据
+        </h1>
+
+        {bigRiseVolumeStockLoading ? (
+          <div className="p-4 text-gray-600">加载中...</div>
+        ) : bigRiseVolumeStockError ? (
+          <div className="p-4 text-red-500">错误：{bigRiseVolumeStockError}</div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left">日期</th>
+                  <th className="px-4 py-2 text-left">
+                    行业（个股数量，平均涨幅，总成交额）及股票信息
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {bigRiseVolumeStockData.map(({ date, industries }) => (
+                  <tr key={date} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2 whitespace-nowrap align-top">
+                      {date}
+                    </td>
+                    <td className="px-4 py-2">
+                      <table className="w-full">
+                        <tbody>{industries}</tbody>
+                      </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </div>
+    </>
   )
 }
