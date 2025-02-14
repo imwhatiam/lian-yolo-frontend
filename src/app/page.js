@@ -161,6 +161,9 @@ export default function Home() {
       title: {
         display: true,
         text: '万得全A指数走势',
+        font: {
+          size: 20, // Set title font size to be larger
+        },
       },
     },
     // Define scales with x-axis ticks hidden
@@ -258,7 +261,7 @@ export default function Home() {
           {/* Chart Section placed above the main container */}
           <div className="p-6 max-w-8xl mx-auto">
             <div className="bg-white p-4 rounded-lg border mb-6">
-              <div style={{ height: '400px' }}>
+              <div style={{ height: '420px' }}>
                 <Line data={chartData} options={chartOptions} />
               </div>
               <div style={{ height: '150px', marginTop: '10px' }}>
