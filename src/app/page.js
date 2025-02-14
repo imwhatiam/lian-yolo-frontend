@@ -1,41 +1,26 @@
 'use client'
-
-import { useState, useEffect } from 'react'
 import axios from 'axios'
 import dayjs from 'dayjs'
-
-// Import chart components from chart.js and react-chartjs-2
+import { useState, useEffect } from 'react'
+import { Line, Bar } from 'react-chartjs-2'
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
+  Chart as ChartJS, CategoryScale, LinearScale,
+  PointElement, LineElement, Title, Tooltip,
+  Legend, BarElement
 } from 'chart.js'
-import { Line } from 'react-chartjs-2'
 
-// Register necessary ChartJS components
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale, PointElement,
+  LineElement, Title, Tooltip, Legend, BarElement
 )
 
-// Format stock data into a structured format for rendering
 const formatStockData = (data) => {
 
   // Convert the data object to an array of [date, industries] entries
   const dateEntries = Object.entries(data)
 
+  // Convert industries object to an array and sort industries by stock count descending
   const formattedData = dateEntries.map(([date, industries]) => {
-    // Convert industries object to an array and sort industries by stock count descending
     const industryEntries = Object.entries(industries)
     const sortedIndustries = industryEntries.sort((a, b) => {
       const aStockCount = a[1].length
@@ -51,7 +36,6 @@ const formatStockData = (data) => {
       // Process each stock and create a span element
       const stockElements = stocks.map((stock, index) => {
         const [stockName, changePct, money] = stock
-
         return (
           <span key={stockName} className="inline-block w-100">
             {stockName}（
@@ -101,11 +85,6 @@ export default function Home() {
   const [bigRiseVolumeStockLoading, setBigRiseVolumeStockLoading] = useState(true)
   const [bigRiseVolumeStockError, setBigRiseVolumeStockError] = useState(null)
 
-  // K-line chart related states for 万得全A
-  const [windInfoData, setWindInfoData] = useState([])
-  const [windInfoLoading, setWindInfoLoading] = useState(true)
-  const [windInfoError, setWindInfoError] = useState(null)
-
   const fetchBigRiseVolumeStockData = async (riseValue) => {
     try {
       const apiUrl = `https://lian-yolo.com/stock/api/big-rise-volume/?rise=${riseValue}`
@@ -119,6 +98,17 @@ export default function Home() {
     }
   }
 
+  const handleRiseChange = (event) => {
+    const selectedValue = parseInt(event.target.value, 10)
+    setBigRiseVolumeStockLoading(true)
+    setRise(selectedValue)
+  }
+
+  // K-line chart related states
+  const [windInfoData, setWindInfoData] = useState([])
+  const [windInfoLoading, setWindInfoLoading] = useState(true)
+  const [windInfoError, setWindInfoError] = useState(null)
+
   const fetchWindInfoData = async () => {
     try {
       const apiUrl = `http://127.0.0.1:8000/stock/api/wind-info/`
@@ -130,13 +120,6 @@ export default function Home() {
     } finally {
       setWindInfoLoading(false)
     }
-  }
-
-  // -------------------- Handle Rise Threshold Change --------------------
-  const handleRiseChange = (event) => {
-    const selectedValue = parseInt(event.target.value, 10)
-    setBigRiseVolumeStockLoading(true)
-    setRise(selectedValue)
   }
 
   // -------------------- useEffect Hooks --------------------
@@ -168,19 +151,92 @@ export default function Home() {
       },
     ],
   }
-
+  // Update Line Chart Options to remove the bottom x-axis (date) labels
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false, // Allow custom height
     plugins: {
-      legend: {
-        position: 'top',
-      },
+      legend: { display: false }, // Hide legend
+      // tooltip: { enabled: false }, // Disable tooltips
       title: {
         display: true,
         text: '万得全A指数走势',
       },
     },
+    // Define scales with x-axis ticks hidden
+    scales: {
+      x: {
+        // display: false, // Hide x-axis
+        ticks: { display: false }, // Remove bottom date labels
+        grid: { display: false },  // Remove x-axis grid lines
+      },
+      y: {
+        display: false, // Hide y-axis
+        ticks: { display: false }, // Remove left side number labels
+        grid: { display: false },  // Remove y-axis grid lines
+      },
+    },
   }
+
+  // 2. Prepare Bar Chart Data for 'amount'
+
+  // Step 1: Format labels from tradeDate
+  const barChartLabels = windInfoData.map(item =>
+    dayjs(item.tradeDate).format('YYYY-MM-DD')
+  )
+
+  // Step 2: Extract 'amount' data for each day
+  const barChartAmounts = windInfoData.map(item => item.amount)
+
+  // Step 3: Determine bar colors based on pctChange (red if positive, green if not)
+  const barChartColors = windInfoData.map(item =>
+    item.pctChange > 0 ? 'rgba(255, 0, 0, 0.7)' : 'rgba(0, 128, 0, 0.7)'
+  )
+
+  // Step 4: Create the bar chart data object
+  const barChartData = {
+    labels: barChartLabels,
+    datasets: [
+      {
+        label: '成交额 (Amount)',
+        data: barChartAmounts,
+        backgroundColor: barChartColors,
+      },
+    ],
+  }
+
+  // Update Bar Chart Options to remove the left y-axis (number) labels
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false, // Allow custom height
+    plugins: {
+      legend: { display: false }, // Hide legend
+      title: { display: false }, // Hide title
+      tooltip: {
+        enabled: true, // Enable tooltip
+        callbacks: {
+          label: (context) => {
+            const value = context.raw / 1e12 // Convert to "万亿元"
+            return `成交额: ${value.toFixed(2)} 万亿元`
+          },
+        },
+      },
+    },
+    // Define scales with y-axis ticks hidden
+    scales: {
+      x: {
+        grid: { display: false }, // Remove x-axis grid lines
+        ticks: { display: false},
+      },
+      y: {
+        display: false, // Hide y-axis
+        grid: { display: false },  // Remove y-axis grid lines
+        ticks: { display: false }, // Remove left side number labels
+      },
+    },
+  }
+
+  const latestWindInfo = windInfoData.length > 0 ? windInfoData[windInfoData.length - 1] : null
 
   // -------------------- Render --------------------
   // If there's an error in fetching stock data, display the error message
@@ -192,11 +248,22 @@ export default function Home() {
         <div className="p-4 text-red-500">图表加载错误：{windInfoError}</div>
       ) : (
         <>
+          {latestWindInfo && (
+            <div className="absolute top-8 right-8 bg-white p-2 rounded-lg shadow text-sm">
+              <div>日期: {dayjs(latestWindInfo.tradeDate).format('YYYY-MM-DD')}</div>
+              <div>涨跌幅: {latestWindInfo.pctChange.toFixed(2)}%</div>
+              <div>成交额: {(latestWindInfo.amount / 1e8).toFixed(2)} 亿元</div>
+            </div>
+          )}
           {/* Chart Section placed above the main container */}
           <div className="p-6 max-w-8xl mx-auto">
             <div className="bg-white p-4 rounded-lg border mb-6">
-              {/* Render chart using react-chartjs-2 */}
-              <Line data={chartData} options={chartOptions} />
+              <div style={{ height: '400px' }}>
+                <Line data={chartData} options={chartOptions} />
+              </div>
+              <div style={{ height: '150px', marginTop: '10px' }}>
+                <Bar data={barChartData} options={barChartOptions} />
+              </div>
             </div>
           </div>
         </>
