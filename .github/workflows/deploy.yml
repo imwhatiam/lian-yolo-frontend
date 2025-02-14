@@ -15,4 +15,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /root/lian-yolo-frontend
+            git pull origin main
             npm run build
