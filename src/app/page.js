@@ -87,7 +87,7 @@ export default function Home() {
 
   const fetchBigRiseVolumeStockData = async (riseValue) => {
     try {
-      const apiUrl = `https://lian-yolo.com/stock/api/big-rise-volume/?rise=${riseValue}`
+      const apiUrl = `https://www.lian-yolo.com/stock/api/big-rise-volume/?rise=${riseValue}`
       const res = await axios.get(apiUrl)
       const data = formatStockData(res.data.data)
       setBigRiseVolumeStockData(data)
@@ -111,7 +111,7 @@ export default function Home() {
 
   const fetchWindInfoData = async () => {
     try {
-      const apiUrl = `https://lian-yolo.com/stock/api/wind-info/`
+      const apiUrl = `https://www.lian-yolo.com/stock/api/wind-info/`
       const res = await axios.get(apiUrl)
       const data = res.data.Result
       setWindInfoData(data)
