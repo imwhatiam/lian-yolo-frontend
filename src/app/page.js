@@ -111,7 +111,7 @@ export default function Home() {
 
   const fetchWindInfoData = async () => {
     try {
-      const apiUrl = `http://127.0.0.1:8000/stock/api/wind-info/`
+      const apiUrl = `https://lian-yolo.com/stock/api/wind-info/`
       const res = await axios.get(apiUrl)
       const data = res.data.Result
       setWindInfoData(data)
