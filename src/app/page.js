@@ -14,10 +14,34 @@ ChartJS.register(
   LineElement, Title, Tooltip, Legend, BarElement
 )
 
-const windInfoUrl = `http://127.0.0.1:8000/stock/api/wind-info/`
-const bigRiseVolumeStockUrl = `http://127.0.0.1:8000/stock/api/big-rise-volume/`
-const tradingCrowdingUrl = 'http://127.0.0.1:8000/stock/api/trading-crowding/'
-// const tradingCrowdingUrl = 'https://www.lian-yolo.com/stock/api/trading-crowding/'
+let windInfoUrl = '';
+let bigRiseVolumeStockUrl = '';
+let tradingCrowdingUrl = '';
+if (typeof window !== 'undefined') {
+
+  const origin = window.location.origin;
+
+  windInfoUrl =
+    origin === 'http://127.0.0.1:3000'
+      ? 'http://127.0.0.1:8000/stock/api/wind-info/'
+      : origin === 'https://www.lian-yolo.com'
+      ? 'https://www.lian-yolo.com/stock/api/wind-info/'
+      : '';
+
+  bigRiseVolumeStockUrl =
+    origin === 'http://127.0.0.1:3000'
+      ? 'http://127.0.0.1:8000/stock/api/big-rise-volume/'
+      : origin === 'https://www.lian-yolo.com'
+      ? 'https://www.lian-yolo.com/stock/api/big-rise-volume/'
+      : '';
+
+  tradingCrowdingUrl =
+    origin === 'http://127.0.0.1:3000'
+      ? 'http://127.0.0.1:8000/stock/api/trading-crowding/'
+      : origin === 'https://www.lian-yolo.com'
+      ? 'https://www.lian-yolo.com/stock/api/trading-crowding/'
+      : '';
+}
 
 export default function Home() {
 
