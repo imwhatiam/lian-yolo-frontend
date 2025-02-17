@@ -45,11 +45,7 @@ if (typeof window !== 'undefined') {
 
 export default function Home() {
 
-  // const isMobile = typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent)
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    setIsMobile(/Mobi|Android/i.test(navigator.userAgent));
-  }, []);
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent)
 
   // 万得全A
   const [windInfoData, setWindInfoData] = useState([])
