@@ -272,7 +272,7 @@ export default function Home() {
     try {
       const jsonData = {
         industry_list: industryList,
-        last_trade_date: date
+        latest_trade_date: date
       }
       const res = await axios.post(tradingCrowdingUrl, jsonData, {
           headers: {
