@@ -361,7 +361,7 @@ export default function Home() {
       legend: { display: true },
       title: {
         display: true,
-        text: '交易拥挤度',
+        text: '交易拥挤度（板块总成交额/全市场总成交额）',
         font: { size: 20 },
       },
     },
