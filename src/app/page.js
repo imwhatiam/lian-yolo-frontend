@@ -1,6 +1,7 @@
 'use client'
 import axios from 'axios'
 import dayjs from 'dayjs'
+import Select from 'react-select'
 import { useState, useEffect } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
 import {
@@ -17,6 +18,7 @@ ChartJS.register(
 let windInfoUrl = '';
 let bigRiseVolumeStockUrl = '';
 let tradingCrowdingUrl = '';
+let industryListUrl = '';
 if (typeof window !== 'undefined') {
 
   const origin = window.location.origin;
@@ -41,11 +43,35 @@ if (typeof window !== 'undefined') {
       : origin === 'https://www.lian-yolo.com'
       ? 'https://www.lian-yolo.com/stock/api/trading-crowding/'
       : '';
+
+  industryListUrl =
+    origin === 'http://127.0.0.1:3000'
+      ? 'http://127.0.0.1:8000/stock/api/industry-list/'
+      : origin === 'https://www.lian-yolo.com'
+      ? 'https://www.lian-yolo.com/stock/api/industry-list/'
+      : '';
 }
 
 export default function Home() {
 
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent)
+
+  // 行业列表初始化
+  const [industryOptions, setIndustryOptions] = useState([])
+  const [selectedIndustries, setSelectedIndustries] = useState([])
+
+  useEffect(() => {
+    fetchIndustryList()
+  }, [])
+
+  const fetchIndustryList = async () => {
+    try {
+      const res = await axios.get(industryListUrl)
+      setIndustryOptions(res.data.data.map(item => ({ value: item, label: item })))
+    } catch (err) {
+      console.error('行业列表加载失败:', err)
+    }
+  }
 
   // 万得全A
   const [windInfoData, setWindInfoData] = useState([])
@@ -59,7 +85,7 @@ export default function Home() {
   const fetchWindInfoData = async () => {
     try {
       const res = await axios.get(windInfoUrl)
-      const data = res.data.Result
+      const data = res.data.data.Result
       setWindInfoData(data)
     } catch (err) {
       setWindInfoError(err.message)
@@ -92,7 +118,7 @@ export default function Home() {
       legend: { display: false },
       title: {
         display: true,
-        text: '万得全A指数走势',
+        text: '万得全A指数走势（08:30更新前一天数据）',
         font: { size: 20 },
       },
     },
@@ -171,6 +197,11 @@ export default function Home() {
       const apiUrl = `${bigRiseVolumeStockUrl}?rise=${riseValue}`
       const res = await axios.get(apiUrl)
       const data = formatStockData(res.data.data)
+      const defaultTradingCrowdingIndustry = data[0].industries.map(item => ({
+        value: item.key,
+        label: item.key
+      }));
+      setSelectedIndustries(defaultTradingCrowdingIndustry)
       setBigRiseVolumeStockData(data)
     } catch (err) {
       setBigRiseVolumeStockError(err.message)
@@ -238,7 +269,6 @@ export default function Home() {
           </tr>
         )
       })
-
       return {
         date: dayjs(date).format('YYYY-MM-DD'),
         industries: industryElements,
@@ -259,27 +289,29 @@ export default function Home() {
   const [tradingCrowdingLoading, setTradingCrowdingLoading] = useState(false)
   const [showTradingCrowdingBtn, setShowTradingCrowdingBtn] = useState(true)
 
-  // 新增处理交易拥挤度按钮点击事件
-  const getTradingCrowding = async (date, industries) => {
+  const getTradingCrowding = async (date) => {
+    if (selectedIndustries.length === 0) {
+      alert('请至少选择一个行业');
+      return;
+    }
 
     setTradingCrowdingData(prev => ({
       ...prev,
       [date]: { loading: true }
     }));
 
-    const industryList = industries.map((industry) => industry.key)
+    const industryList = selectedIndustries.map((industry) => industry.value)
     setTradingCrowdingLoading(true)
+
     try {
       const jsonData = {
         industry_list: industryList,
         latest_trade_date: date
       }
       const res = await axios.post(tradingCrowdingUrl, jsonData, {
-          headers: {
-              'Content-Type': 'application/json'
-          }
+          headers: {'Content-Type': 'application/json'}
       });
-      const apiData = res.data
+      const apiData = res.data.data
       const dates = Object.keys(apiData).sort((a, b) => dayjs(a) - dayjs(b))
 
       const colors = [
@@ -403,7 +435,7 @@ export default function Home() {
               )
             })}
           </select>
-          %）数据
+          %）数据（17:30更新当天数据）
         </h1>
 
         {bigRiseVolumeStockLoading ? (
@@ -421,7 +453,7 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {bigRiseVolumeStockData.map((data) => {
+              {bigRiseVolumeStockData.map((data, idx) => {
                 const chartState = (tradingCrowdingData || {})[data.date] || {};
                 return (
                   <tr key={data.date} className="hover:bg-gray-50">
@@ -434,14 +466,27 @@ export default function Home() {
                           {data.industries}
                         </tbody>
                       </table>
-                      {showTradingCrowdingBtn && (
-                        <div className="text-center pt-2">
-                          <button
-                            onClick={() => getTradingCrowding(data.date, data.industries)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded"
-                          >
-                            获取交易拥挤度
-                          </button>
+                      {idx === 0 && showTradingCrowdingBtn && (
+                        <div className="flex items-center gap-4 pt-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <Select
+                                isMulti
+                                defaultValue={selectedIndustries}
+                                value={selectedIndustries}
+                                onChange={setSelectedIndustries}
+                                options={industryOptions}
+                                placeholder="选择行业..."
+                                closeMenuOnSelect={false}
+                              />
+                            </div>
+                            <button
+                              onClick={() => getTradingCrowding(data.date)}
+                              className="px-4 py-2 bg-blue-500 text-white rounded"
+                            >
+                              获取交易拥挤度
+                            </button>
+                          </div>
                         </div>
                       )}
                       {chartState.loading ? (
