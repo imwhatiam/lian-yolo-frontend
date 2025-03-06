@@ -1,6 +1,7 @@
 'use client'
 import axios from 'axios'
 import dayjs from 'dayjs'
+import Cookies from 'js-cookie';
 import Select from 'react-select'
 import { useState, useEffect } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
@@ -199,8 +200,12 @@ export default function Home() {
         industry_list: industryList,
         latest_trade_date: date
       };
+      const csrfToken = Cookies.get('csrftoken');
       const res = await axios.post(tradingCrowdingUrl, jsonData, {
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
       });
       const apiData = res.data.data;
       const dates = Object.keys(apiData).sort((a, b) => dayjs(a) - dayjs(b));
